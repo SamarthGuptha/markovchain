@@ -3,11 +3,10 @@ import numpy as np
 from config import *
 
 def lerpColor(c1, c2, t):
-    return (
-        int(c1[0] + (c2[0] - c1[0]) * t),
-        int(c1[1] + (c2[1] - c1[1]) * t),
-        int(c1[2] + (c2[2] - c1[2]) * t)
-    )
+    r = int(c1[0] + (c2[0]-c1[0]) * t)
+    g = int(c1[1] + (c2[1]-c1[1]) * t)
+    b = int(c1[2] + (c2[2]-c1[2]) * t)
+    return f'#{r:02x}{g:02x}{b:02x}'
 
 class Tree:
     def __init__(self, dna):
@@ -47,7 +46,7 @@ class Tree:
                 stack.append((endPos, dirright, depth + 1))
 
     def calculateFitness(self):
-        heightScore = abs(self.minY) * 2.5
+        heightScore = abs(self.minY) * 3.0
         widthScore = (self.maxX - self.minX) * 1.0
         intersections=0
         checks=3
@@ -60,14 +59,20 @@ class Tree:
         self.fitness = max(1, (heightScore + widthScore) - penalty)
         return self.fitness
 
-    def draw(self, surface, startX, startY, maxSegmentstoDraw):
+    def drawonCanvas(self, canvas, offsetX, offsetY, limit=None):
         count = 0
+        total = len(self.segments)
+        limit = total if limit is None else limit
+
         for p1, p2, depth in self.segments:
-            if count > maxSegmentstoDraw:break
-            thickness = max(1, int((MAXDEPTH - depth) * 1.2))
-            t = depth/MAXDEPTH
-            color = lerpColor(TRUNKCOLOR, LEAFCOLOR, t)
-            start = (p1[0] + startX, p1[1] + startY)
-            end = (p2[0] + startX, p2[1] + startY)
-            pygame.draw.line(surface, color, start, end, thickness)
+            if count>=limit: break
+            width = max(1, int((MAXDEPTH-depth) * 0.8))
+            t = depth / MAXDEPTH
+            hexColor = lerpColor(TRUNKCOLOR, LEAFCOLOR, t)
+
+            canvas.createLine(
+                p1[0]+offsetX, p1[1]+offsetY,
+                p2[0]+offsetX, p2[1]+offsetY,
+                width=width, fill = hexColor, capstyle = "round"
+            )
             count += 1

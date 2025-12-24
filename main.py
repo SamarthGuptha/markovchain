@@ -1,85 +1,68 @@
-import pygame
-import sys
+import tkinter as tk
+from tkinter import ttk
+import config
 import numpy as np
+
 from config import *
 from genetics import TreeDNA
 from tree import Tree
-pygame.init()
 
-screen = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
-pygame.display.set_caption("Evolutionary Fractals")
-clock = pygame.time.Clock()
-fontUI = pygame.font.SysFont("segoeui", 20)
-fontTitle = pygame.font.SysFont("segoeui", 40, bold=True)
-def createInitialPopulation():
-    pop = []
-    for _ in range(POPULATIONSIZE):
-        dna = TreeDNA()
-        t = Tree(dna)
-        t.grow()
-        t.calculateFitness()
-        pop.append(t)
-    return pop
-def evolvePopulation(population):
-    population.sort(key=lambda t: t.fitness, reverse=True)
-    cutoff = int(POPULATIONSIZE * ELITISM)
-    survivors = population[:cutoff]
-    nextGen = []
-    nextGen.extend(survivors)
-    while len(nextGen)<POPULATIONSIZE:
-        parent = survivors[np.random.randint(0, len(survivors))]
-        childDNA = parent.dna.clone()
-        childDNA.mutate()
-        child = Tree(childDNA)
-        child.grow()
-        child.calculateFitness()
-        nextGen.append(child)
-    return nextGen
+class EvolutionaryApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Evolutionary Fractals")
+        self.root.geometry = (f"{CANVASWIDTH + SIDEBARWIDTH}x{CANVASHEIGHT}")
+        self.root.resizable(False, False)
+        self.population = []
+        self.champion = None
+        self.generation = 1
+        self.isRunning = False
+        self.animationProgress = 0
+        self.createWidgets()
+        self.animationloop()
 
-def main():
-    population = createInitialPopulation()
-    champion = max(population, key=lambda t: t.fitness)
-    currentGen = 1
-    drawLimit = 0
-    drawSpeed = 10
-    targetSegments = len(champion.segments)
-    evolutionTrigger = False
-    running = True
-    while running:
-        screen.fill(BACKGROUND)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT: running = False
-            if event.type == pygame.MOUSEBUTTONDOWN: drawLimit = targetSegments
-        if drawLimit < targetSegments: drawLimit += drawSpeed
+    def createWidgets(self):
+        self.canvas = tk.Canvas(
+            self.root,
+            width=CANVASWIDTH,
+            height=CANVASHEIGHT,
+            bg=COLORBG,
+            highlightthickness=0
+        )
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.sidebar = tk.Frame(self.root, width=SIDEBARWIDTH, bg="#2d2d2d", padx=10, pady=10)
+        self.sidebar.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.sidebar.pack_propagate(False)
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure("TLabel", background="#2d2d2d", foreground="white")
+        style.configure("TButton", font=('Segoe UI', 10))
+        lblTitle = ttk.Label(self.sidebar, text="Control Panel", font=("Segoe UI", 16, "bold"))
+        lblTitle.pack(pady=(0, 20))
+        self.btnRun = ttk.Button(self.sidebar, text="Start", command=self.toggleRun)
+        self.btnRun.pack(fill=tk.X, pady=5)
+        btnReset = ttk.Button(self.sidebar, text="Reset Population", command=self.resetPopulation)
+        btnReset.pack(fill=tk.X, pady=5)
+        self.createSlider("Mutation Rate", 0.0, 1.0, MUTATIONRATE, self.updateMutRate)
+        self.createSlider("Mutation Strength", 0.0, 0.5, MUTATIONSTRENGTH, self.updateMutStrength)
+        ttk.Separator(self.sidebar, orient='horizontal').pack(fill='x', pady=20)
+        self.lblGen = ttk.Label(self.sidebar, text="Generation: 0", font=("Segoe UI", 12))
+        self.lblGen.pack(anchor="w")
+        self.lblFit = ttk.Label(self.sidebar, text="Best Fitness: 0")
+        self.lblFit.pack(anchor="w")
+        self.lblDNA = ttk.Label(self.sidebar, text="Angle: 0°")
+        self.lblDNA.pack(anchor="w")
 
-        else:
-            evolutionTrigger = True
-        champion.draw(screen, STARTPOS[0], STARTPOS[1], drawLimit)
-        if evolutionTrigger and currentGen < GENERATIONS:
-            pygame.time.delay(100)
-            population = evolvePopulation(population)
-            newChamp = population[0]
-            champion = newChamp
-            currentGen += 1
-            drawLimit = 0
-            targetSegments = len(champion.segments)
-            evolutionTrigger = False
+    def createSlider(self, label, minV, maxV, default, callback):
+        frame = tk.Frame(self.sidebar, bg="#2d2d2d")
+        frame.pack(fill=tk.X, pady=10)
+        lbl = ttk.Label(frame, text=label)
+        lbl.pack(anchor="w")
 
-        titleSurf = fontTitle.render(f"Generation {currentGen}", True, TEXTCOLOR)
-        screen.blit(titleSurf, (20, 20))
+        scale = tk.Scale(frame, from_=minV, to=maxV, orient=tk.HORIZONTAL,
+                         resolution=0.01, bg="#2d2d2d", fg="white", highlightthickness=0, command=callback)
+        scale.set(default)
+        scale.pack(fill=tk.X)
 
-        stats = [
-            f"Fitness: {int(champion.fitness)}",
-            f"Segments: {len(champion.segments)}",
-            f"Angle: {int(np.degrees(champion.dna.angle))}°",
-            f"Shrink: {champion.dna.shrinkFactor:.2f}"
-        ]
-        for i, line in enumerate(stats):
-            s = fontUI.render(line, True, TEXTCOLOR)
-            screen.blit(s, (20, 70 + i * 25))
-        pygame.display.flip()
-        clock.tick(FPS)
-    pygame.quit()
-    sys.exit()
-if __name__ == "__main__":
-    main()
+
+
