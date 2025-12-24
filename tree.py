@@ -1,4 +1,4 @@
-import pygame, mathutils
+import mathutils
 import numpy as np
 from config import *
 
@@ -19,7 +19,7 @@ class Tree:
         self.maxY=0
     def grow(self):
         self.segments=[]
-        startVec = np.array([0, BRANCHLENGTH])
+        startVec = np.array([0, -BRANCHLENGTH])
         stack=[(np.array([0.0, 0.0]), startVec, 0)]
         while stack:
             currentPos, currentDir, depth=stack.pop()
@@ -70,7 +70,7 @@ class Tree:
             t = depth / MAXDEPTH
             hexColor = lerpColor(TRUNKCOLOR, LEAFCOLOR, t)
 
-            canvas.createLine(
+            canvas.create_line(
                 p1[0]+offsetX, p1[1]+offsetY,
                 p2[0]+offsetX, p2[1]+offsetY,
                 width=width, fill = hexColor, capstyle = "round"

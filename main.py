@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 import config
 import numpy as np
-
 from config import *
 from genetics import TreeDNA
 from tree import Tree
@@ -19,8 +18,10 @@ class EvolutionaryApp:
         self.isRunning = False
         self.animationProgress = 0
         self.createWidgets()
-        self.animationloop()
-
+        self.animateLoop()
+        self.createSliderr
+        self.dagTIME
+        self.ragTIME
     def createWidgets(self):
         self.canvas = tk.Canvas(
             self.root,
@@ -64,5 +65,70 @@ class EvolutionaryApp:
         scale.set(default)
         scale.pack(fill=tk.X)
 
+    def updateMutRate(self, val): config.MUTATIONRATE = float(val)
+    def updateMutStrength(self, val): config.MUTATIONSTRENGTH = float(val)
+    def toggleRun(self):
+        self.isRunning = not self.isRunning
+        self.btnRun.configure(text="Pause" if self.isRunning else "Resume")
 
+    def resetPopulation(self):
+        self.population = []
+        for _ in range(POPULATIONSIZE):
+            dna = TreeDNA()
+            t=Tree(dna)
+            t.grow()
+            t.calculateFitness()
+            self.population.append(t)
+
+        self.champion = max(self.population, key=lambda t: t.fitness)
+        self.generation = 1
+        self.animationProgress = 0
+        self.drawChampion()
+        self.updateStats()
+    def evolve(self):
+        self.population.sort(key=lambda t: t.fitness, reverse=True)
+        cutoff = int(POPULATIONSIZE*ELITISM)
+        survivors = self.population[:cutoff]
+        nextGen = survivors[:]
+        while len(nextGen) < config.POPULATIONSIZE:
+            parent = survivors[np.random.randint(0, len(survivors))]
+            childDNA = parent.dna.clone()
+            childDNA.mutate()
+            child = Tree(childDNA)
+            child.grow()
+            child.calculateFitness()
+            nextGen.append(child)
+
+        self.population = nextGen
+        self.champion = self.population[0]
+        self.generation+=1
+        self.updateStats()
+        self.animationProgress = 0
+
+    def updateStats(self):
+        self.lblGen.config(text = f"Generation: {self.generation}")
+        self.lblFit.config(text=f"Best Fitness: {self.champion.fitness}")
+        self.lblDNA.config(text = f"Branch Angle: {np.degrees(self.champion.dna.angle)}")
+    def drawChampion(self):
+        self.canvas.delete("all")
+        if not self.champion: return
+        startX = CANVASWIDTH//1.75
+        startY = CANVASHEIGHT//1.3
+        limit = int(self.animationProgress)
+        self.champion.drawonCanvas(self.canvas, startX, startY, limit)
+
+    def animateLoop(self):
+        if self.champion:
+            totalSegments = len(self.champion.segments)
+            if self.animationProgress < totalSegments:
+                self.animationProgress+= 5 + (totalSegments / 50)
+                self.drawChampion()
+            elif self.isRunning: self.evolve()
+
+        self.root.after(16, self.animateLoop)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = EvolutionaryApp(root)
+    root.mainloop()
 
